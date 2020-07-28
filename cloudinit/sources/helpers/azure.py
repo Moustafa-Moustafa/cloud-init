@@ -1,5 +1,5 @@
 # This file is part of cloud-init. See LICENSE file for license information.
-
+import base64
 import json
 import logging
 import os
@@ -8,7 +8,9 @@ import socket
 import struct
 import time
 import textwrap
+import zlib
 
+from cloudinit.cmd.devel import logs
 from cloudinit.net import dhcp
 from cloudinit import stages
 from cloudinit import temp_utils
@@ -33,6 +35,7 @@ DEFAULT_WIRESERVER_ENDPOINT = "a8:3f:81:10"
 BOOT_EVENT_TYPE = 'boot-telemetry'
 SYSTEMINFO_EVENT_TYPE = 'system-info'
 DIAGNOSTIC_EVENT_TYPE = 'diagnostic'
+COMPRESSED_EVENT_TYPE = 'compressed'
 
 azure_ds_reporter = events.ReportEventStack(
     name="azure-ds",
@@ -175,6 +178,34 @@ def report_diagnostic_event(str):
 
     # return the event for unit testing purpose
     return evt
+
+
+def report_compressed_event(event_name, event_content):
+    """Report a compressed event"""
+    compressed_data = base64.encodebytes(zlib.compress(event_content))
+    event_data = {"encoding": "gz+b64",
+                  "data": compressed_data.decode('ascii')}
+    evt = events.ReportingEvent(
+        COMPRESSED_EVENT_TYPE, event_name,
+        json.dumps(event_data),
+        events.DEFAULT_EVENT_ORIGIN)
+    events.report_event(evt, excluded_handlers={"log"})
+
+    # return the event for unit testing purpose
+    return evt
+
+
+@azure_ds_telemetry_reporter
+def push_log_to_kvp():
+    """Push the cloud-init.log file to KVP"""
+    LOG.debug("Dumping cloud-init.log file to KVP")
+
+    try:
+        with open(logs.CLOUDINIT_LOGS[0], "rb") as f:
+            report_compressed_event("cloud-init.log", f.read())
+    except Exception as ex:
+        report_diagnostic_event("Exception when dumping log file: %s" %
+                                repr(ex))
 
 
 @contextmanager
@@ -601,6 +632,7 @@ class WALinuxAgentShim(object):
         # Host will collect kvps when cloud-init reports ready.
         # some kvps might still be in the queue. We yield the scheduler
         # to make sure we process all kvps up till this point.
+        push_log_to_kvp()
         time.sleep(0)
         try:
             http_client.post(

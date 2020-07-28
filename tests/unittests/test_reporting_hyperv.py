@@ -72,7 +72,7 @@ class TextKvpReporter(CiTestCase):
     def test_event_very_long(self):
         reporter = HyperVKvpReportingHandler(
             kvp_file_path=self.tmp_file_path)
-        description = 'ab' * reporter.HV_KVP_EXCHANGE_MAX_VALUE_SIZE
+        description = 'ab' * reporter.HV_KVP_AZURE_MAX_VALUE_SIZE
         long_event = events.FinishReportingEvent(
             'event_name',
             description,
@@ -198,6 +198,27 @@ class TextKvpReporter(CiTestCase):
 
         if "test_diagnostic" not in evt_msg:
             raise AssertionError("missing expected diagnostic message")
+
+    def test_report_compressed_event(self):
+        reporter = HyperVKvpReportingHandler(kvp_file_path=self.tmp_file_path)
+
+        event_desc = b'test_compressed'
+        reporter.publish_event(
+            azure.report_compressed_event(
+                "compressed event", event_desc))
+        reporter.q.join()
+        kvps = list(reporter._iterate_kvps(0))
+        self.assertEqual(1, len(kvps))
+        kvp_value = kvps[0]['value']
+        kvp_value_json = json.loads(kvp_value)
+        evt_msg = kvp_value_json["msg"]
+        evt_msg_json = json.loads(evt_msg)
+        evt_encoding = evt_msg_json["encoding"]
+        evt_data = zlib.decompress(
+            base64.decodebytes(evt_msg_json["data"].encode("ascii")))
+
+        self.assertEqual(evt_data, event_desc)
+        self.assertEqual(evt_encoding, "gz+b64")
 
     def test_unique_kvp_key(self):
         reporter = HyperVKvpReportingHandler(kvp_file_path=self.tmp_file_path)
