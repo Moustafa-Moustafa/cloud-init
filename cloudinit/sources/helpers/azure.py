@@ -37,6 +37,7 @@ SYSTEMINFO_EVENT_TYPE = 'system-info'
 DIAGNOSTIC_EVENT_TYPE = 'diagnostic'
 COMPRESSED_EVENT_TYPE = 'compressed'
 
+logs_pushed_to_kvp = False
 azure_ds_reporter = events.ReportEventStack(
     name="azure-ds",
     description="initialize reporter for azure ds",
@@ -197,12 +198,18 @@ def report_compressed_event(event_name, event_content):
 
 @azure_ds_telemetry_reporter
 def push_log_to_kvp():
-    """Push the cloud-init.log file to KVP"""
+    """Push the cloud-init.log file to KVP if not already pushed"""
+    global logs_pushed_to_kvp
+    if logs_pushed_to_kvp:
+        LOG.debug("cloud-init.log file already dumped to KVP, skipping")
+        return
+
     LOG.debug("Dumping cloud-init.log file to KVP")
 
     try:
         with open(logs.CLOUDINIT_LOGS[0], "rb") as f:
             report_compressed_event("cloud-init.log", f.read())
+        logs_pushed_to_kvp = True
     except Exception as ex:
         report_diagnostic_event("Exception when dumping log file: %s" %
                                 repr(ex))
