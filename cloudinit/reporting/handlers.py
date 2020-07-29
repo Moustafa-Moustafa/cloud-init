@@ -114,7 +114,7 @@ class HyperVKvpReportingHandler(ReportingHandler):
     """
     HV_KVP_EXCHANGE_MAX_VALUE_SIZE = 2048
     # The maximum value size expected in Azure
-    HV_KVP_AZURE_MAX_VALUE_SIZE = 512
+    HV_KVP_AZURE_MAX_VALUE_SIZE = 1024
     HV_KVP_EXCHANGE_MAX_KEY_SIZE = 512
     HV_KVP_RECORD_SIZE = (HV_KVP_EXCHANGE_MAX_KEY_SIZE +
                           HV_KVP_EXCHANGE_MAX_VALUE_SIZE)

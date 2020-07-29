@@ -189,7 +189,7 @@ def report_compressed_event(event_name, event_content):
         COMPRESSED_EVENT_TYPE, event_name,
         json.dumps(event_data),
         events.DEFAULT_EVENT_ORIGIN)
-    events.report_event(evt, excluded_handlers={"log"})
+    events.report_event(evt, excluded_handlers={"logging"})
 
     # return the event for unit testing purpose
     return evt
