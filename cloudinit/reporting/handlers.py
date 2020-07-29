@@ -197,7 +197,8 @@ class HyperVKvpReportingHandler(ReportingHandler):
     def _event_key(self, event):
         """
         the event key format is:
-        CLOUD_INIT|<incarnation number>|<event_type>|<event_name>|<uuid>[|subevent_index]
+        CLOUD_INIT|<incarnation number>|<event_type>|<event_name>|<uuid>
+        [|subevent_index]
         """
         return u"{0}|{1}|{2}|{3}".format(self.event_key_prefix,
                                          event.event_type, event.name,
