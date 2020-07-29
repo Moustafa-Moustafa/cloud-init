@@ -1,4 +1,6 @@
 # This file is part of cloud-init. See LICENSE file for license information.
+import base64
+import zlib
 
 from cloudinit.reporting import events
 from cloudinit.reporting.handlers import HyperVKvpReportingHandler
