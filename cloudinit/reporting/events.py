@@ -94,8 +94,8 @@ def report_event(event, excluded_handlers={}):
         The type of the event; this should be a constant from the
         reporting module.
     """
-    registered_handlers = instantiated_handler_registry.registered_items.items()
-    for handler_key, handler in registered_handlers:
+    handlers = instantiated_handler_registry.registered_items.items()
+    for handler_key, handler in handlers:
         if handler_key not in excluded_handlers:
             handler.publish_event(event)
 
