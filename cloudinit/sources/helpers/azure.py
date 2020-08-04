@@ -36,8 +36,12 @@ BOOT_EVENT_TYPE = 'boot-telemetry'
 SYSTEMINFO_EVENT_TYPE = 'system-info'
 DIAGNOSTIC_EVENT_TYPE = 'diagnostic'
 COMPRESSED_EVENT_TYPE = 'compressed'
+# Maximum number of bytes of the cloud-init.log file that
+# can be dumped to KVP at once
+MAX_LOG_TO_KVP_LENGTH = 500000
 
-logs_pushed_to_kvp = False
+# Index of the last byte of the log file that was dumped to KVP
+last_log_byte_pushed_to_kvp_index = 0
 azure_ds_reporter = events.ReportEventStack(
     name="azure-ds",
     description="initialize reporter for azure ds",
@@ -198,18 +202,21 @@ def report_compressed_event(event_name, event_content):
 
 @azure_ds_telemetry_reporter
 def push_log_to_kvp():
-    """Push the cloud-init.log file to KVP if not already pushed"""
-    global logs_pushed_to_kvp
-    if logs_pushed_to_kvp:
-        LOG.debug("cloud-init.log file already dumped to KVP, skipping")
-        return
-
+    """Push a portion of cloud-init.log file or the whole file to KVP
+    based on the file size.
+    When called more than once, the function continues pushing the log file
+    from where it left off last time it was called."""
+    global last_log_byte_pushed_to_kvp_index
     LOG.debug("Dumping cloud-init.log file to KVP")
 
     try:
         with open(logs.CLOUDINIT_LOGS[0], "rb") as f:
+            f.seek(0, os.SEEK_END)
+            seek_index = max(f.tell() - MAX_LOG_TO_KVP_LENGTH,
+                             last_log_byte_pushed_to_kvp_index)
+            f.seek(seek_index, os.SEEK_SET)
             report_compressed_event("cloud-init.log", f.read())
-        logs_pushed_to_kvp = True
+            last_log_byte_pushed_to_kvp_index = f.tell()
     except Exception as ex:
         report_diagnostic_event("Exception when dumping log file: %s" %
                                 repr(ex))
