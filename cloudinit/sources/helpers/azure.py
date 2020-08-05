@@ -10,7 +10,7 @@ import time
 import textwrap
 import zlib
 
-from cloudinit.cmd.devel import logs
+from cloudinit.settings import CFG_BUILTIN
 from cloudinit.net import dhcp
 from cloudinit import stages
 from cloudinit import temp_utils
@@ -210,10 +210,13 @@ def push_log_to_kvp():
     LOG.debug("Dumping cloud-init.log file to KVP")
 
     try:
-        with open(logs.CLOUDINIT_LOGS[0], "rb") as f:
+        with open(CFG_BUILTIN['def_log_file'], "rb") as f:
             f.seek(0, os.SEEK_END)
             seek_index = max(f.tell() - MAX_LOG_TO_KVP_LENGTH,
                              last_log_byte_pushed_to_kvp_index)
+            report_diagnostic_event(
+                "Dumping {} bytes of cloud-init.log file to KVP".format(
+                    f.tell() - seek_index))
             f.seek(seek_index, os.SEEK_SET)
             report_compressed_event("cloud-init.log", f.read())
             last_log_byte_pushed_to_kvp_index = f.tell()
