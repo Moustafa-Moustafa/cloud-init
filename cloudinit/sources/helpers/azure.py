@@ -201,7 +201,7 @@ def report_compressed_event(event_name, event_content):
 
 
 @azure_ds_telemetry_reporter
-def push_log_to_kvp():
+def push_log_to_kvp(file_name=CFG_BUILTIN['def_log_file']):
     """Push a portion of cloud-init.log file or the whole file to KVP
     based on the file size.
     When called more than once, the function continues pushing the log file
@@ -210,7 +210,7 @@ def push_log_to_kvp():
     LOG.debug("Dumping cloud-init.log file to KVP")
 
     try:
-        with open(CFG_BUILTIN['def_log_file'], "rb") as f:
+        with open(file_name, "rb") as f:
             f.seek(0, os.SEEK_END)
             seek_index = max(f.tell() - MAX_LOG_TO_KVP_LENGTH,
                              last_log_byte_pushed_to_kvp_index)

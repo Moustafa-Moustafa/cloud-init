@@ -2,7 +2,7 @@
 import base64
 import zlib
 
-from cloudinit.reporting import events
+from cloudinit.reporting import events, instantiated_handler_registry
 from cloudinit.reporting.handlers import HyperVKvpReportingHandler
 
 import json
@@ -203,24 +203,46 @@ class TextKvpReporter(CiTestCase):
 
     def test_report_compressed_event(self):
         reporter = HyperVKvpReportingHandler(kvp_file_path=self.tmp_file_path)
-
+        instantiated_handler_registry.register_item("telemetry", reporter)
         event_desc = b'test_compressed'
-        reporter.publish_event(
-            azure.report_compressed_event(
-                "compressed event", event_desc))
+        azure.report_compressed_event(
+                "compressed event", event_desc)
+
+        self.validate_compressed_kvps(reporter, 1, [event_desc])
+
+    def test_push_log_to_kvp(self):
+        reporter = HyperVKvpReportingHandler(kvp_file_path=self.tmp_file_path)
+        instantiated_handler_registry.register_item("telemetry", reporter)
+        log_file = "cloud-init.log"
+        azure.MAX_LOG_TO_KVP_LENGTH = 100
+        with open(log_file, "w") as f:
+            log_content = "A" * 50 + "B" * 100
+            f.write(log_content)
+        azure.push_log_to_kvp(log_file)
+
+        with open(log_file, "a") as f:
+            extra_content = "C" * 10
+            f.write(extra_content)
+        azure.push_log_to_kvp(log_file)
+
+        self.validate_compressed_kvps(reporter,
+            2, [log_content[:-azure.MAX_LOG_TO_KVP_LENGTH], extra_content])
+
+    def validate_compressed_kvps(self, reporter, count, values):
         reporter.q.join()
         kvps = list(reporter._iterate_kvps(0))
-        self.assertEqual(1, len(kvps))
-        kvp_value = kvps[0]['value']
-        kvp_value_json = json.loads(kvp_value)
-        evt_msg = kvp_value_json["msg"]
-        evt_msg_json = json.loads(evt_msg)
-        evt_encoding = evt_msg_json["encoding"]
-        evt_data = zlib.decompress(
-            base64.decodebytes(evt_msg_json["data"].encode("ascii")))
+        self.assertEqual(count, len(kvps))
+        for kvp, expected_value in zip(kvps, values):
+            kvp_value = kvp['value']
+            kvp_value_json = json.loads(kvp_value)
+            evt_msg = kvp_value_json["msg"]
+            evt_msg_json = json.loads(evt_msg)
+            evt_encoding = evt_msg_json["encoding"]
+            evt_data = zlib.decompress(
+                base64.decodebytes(evt_msg_json["data"].encode("ascii")))
 
-        self.assertEqual(evt_data, event_desc)
-        self.assertEqual(evt_encoding, "gz+b64")
+            self.assertEqual(evt_data, expected_value)
+            self.assertEqual(evt_encoding, "gz+b64")
 
     def test_unique_kvp_key(self):
         reporter = HyperVKvpReportingHandler(kvp_file_path=self.tmp_file_path)
