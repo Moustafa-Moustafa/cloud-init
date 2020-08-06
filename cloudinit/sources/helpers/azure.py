@@ -38,7 +38,7 @@ DIAGNOSTIC_EVENT_TYPE = 'diagnostic'
 COMPRESSED_EVENT_TYPE = 'compressed'
 # Maximum number of bytes of the cloud-init.log file that
 # can be dumped to KVP at once
-MAX_LOG_TO_KVP_LENGTH = 500000
+MAX_LOG_TO_KVP_LENGTH = 512000
 
 # Index of the last byte of the log file that was dumped to KVP
 last_log_byte_pushed_to_kvp_index = 0
