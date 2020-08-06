@@ -207,18 +207,18 @@ class TextKvpReporter(CiTestCase):
             instantiated_handler_registry.register_item("telemetry", reporter)
             event_desc = b'test_compressed'
             azure.report_compressed_event(
-                    "compressed event", event_desc)
+                "compressed event", event_desc)
 
             self.validate_compressed_kvps(reporter, 1, [event_desc])
         finally:
             instantiated_handler_registry.unregister_item("telemetry",
-                    force=False)
+                                                          force=False)
 
     def test_push_log_to_kvp(self):
         reporter = HyperVKvpReportingHandler(kvp_file_path=self.tmp_file_path)
         try:
             instantiated_handler_registry.register_item("telemetry", reporter)
-            log_file = "cloud-init.log"
+            log_file = self.tmp_path("cloud-init.log")
             azure.MAX_LOG_TO_KVP_LENGTH = 100
             with open(log_file, "w") as f:
                 log_content = "A" * 50 + "B" * 100
@@ -230,12 +230,13 @@ class TextKvpReporter(CiTestCase):
                 f.write(extra_content)
             azure.push_log_to_kvp(log_file)
 
-            self.validate_compressed_kvps(reporter, 2,
-                    [log_content[-azure.MAX_LOG_TO_KVP_LENGTH:].encode(),
-                        extra_content.encode()])
+            self.validate_compressed_kvps(
+                reporter, 2,
+                [log_content[-azure.MAX_LOG_TO_KVP_LENGTH:].encode(),
+                 extra_content.encode()])
         finally:
             instantiated_handler_registry.unregister_item("telemetry",
-                    force=False)
+                                                          force=False)
 
     def validate_compressed_kvps(self, reporter, count, values):
         reporter.q.join()
